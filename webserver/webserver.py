@@ -2,6 +2,25 @@ from fastapi import APIRouter, Body, Request, Response, HTTPException, status, F
 from dotenv import dotenv_values
 from pymongo import MongoClient
 from bson import ObjectId
+import uuid
+from typing import Optional
+from pydantic import BaseModel, Field
+from typing import List
+
+
+class PyObjectId(ObjectId):
+    @classmethod
+    def __get_validators__(cls):
+        yield cls.validate
+    @classmethod
+    def validate(cls, v):
+        if not ObjectId.is_valid(v):
+            raise ValueError("Invalid objectid")
+        return ObjectId(v)
+    @classmethod
+    def __modify_schema__(cls, field_schema):
+        field_schema.update(type="string")
+
 
 config = dotenv_values(".env")
 
@@ -73,31 +92,34 @@ async def products():
     }
 
 
-import uuid
-from typing import Optional
-from pydantic import BaseModel, Field
-from typing import List
+
 
 class Product(BaseModel):
-    id: str = Field(str, alias="_id")
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     label: str = Field(None,alias="label")
 
     class Config:
         allow_population_by_field_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
         schema_extra = {
             "example": {
-                "_id": "123123132132132132",
+                "_id": "ObjectId(\"ab46513246546546578797\")",
                 "label": "Don Quixote"
             }
         }
 
 
 @IWMI_api.get("/product/{productID}", response_description="Get a single product by id", response_model=Product)
-async def productsWithID(productID: str, request: Request):
+async def productsWithID(productID: PyObjectId, request: Request):
     # todo : request all products and send it in the following form, using "productID" as id of the product :
-    print(repr(ObjectId(productID)))
     if (product := request.app.database["product"].find_one({"_id": productID})) is not None:
         return product
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Product with ID {productID} not found")
+
+@IWMI_api.get("/product", response_description="List all books", response_model=List[Product])
+def list_products(request: Request):
+    products = list(request.app.database["product"].find(limit=100))
+    return products
 
 
