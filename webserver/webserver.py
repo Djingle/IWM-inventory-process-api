@@ -29,7 +29,8 @@ def shutdown_db_client():
 @IWMI_api.get("/")
 async def root():
     return { # example
-        "message": "Welcome to the IWMInventoryProcess API! 😳️"
+        "message": "Welcome to the IWMInventoryProcess API! 😳️",
+        "illustration": "https://cdn.discordapp.com/attachments/1016694266099146793/1024278535847809054/mamazon.png"
     }
 
 
@@ -62,7 +63,7 @@ async def droneEndpoint(req: Request, resp: Response):
 
 
 ######################## General requests ########################
-@IWMI_api.get("/warehouses")
+@IWMI_api.get("/warehouse")
 async def warehouses():
     # todo : request all warehouses and send it in the following form :
     return { # example
@@ -80,7 +81,7 @@ async def warehouses():
         ]
     }
 
-@IWMI_api.get("/warehouses/{warehouseID}")
+@IWMI_api.get("/warehouse/{warehouseID}")
 async def warehousesWithID(warehouseID: str):
     # todo : request all warehouses and send it in the following form, using "warehouseID" as id of the product :
     print(warehouseID)
@@ -91,7 +92,7 @@ async def warehousesWithID(warehouseID: str):
         "inventory": { "products" : ["ABCD123", "EFGH456"] }
     }
 
-@IWMI_api.get("/products")
+@IWMI_api.get("/product")
 async def products():
     # todo : request all products and send it in the following form :
     return { # example
