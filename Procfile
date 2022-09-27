@@ -1,1 +1,1 @@
-web: uvicorn webserver:IWMI_api --port=${PORT:-5000}
+web: uvicorn webserver:IWMI_api --host 0.0.0.0 --port $PORT
