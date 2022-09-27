@@ -56,3 +56,17 @@ class Storage(BaseModel):
                 "quantity" : "100"
             }
         }
+
+class Warehouse(BaseModel):
+    id: str = Field(None, alias="_id")
+    totalStock:int = Field(None,alias="totalStock")
+    totalItems:int = Field(None,alias="totalItem")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "_id": "MAG1",
+                "totalStock": "125",
+                "totalItems" : "3",
+            }
+        }

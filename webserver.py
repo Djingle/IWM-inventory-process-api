@@ -91,6 +91,11 @@ async def warehouseStorageWithID(warehouseID: str, request: Request):
         return warehouse
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Product with ID {warehouseID} not found")
 
+@IWMI_api.get("/warehouse", response_description="List total storage and items for each  warehouse ", response_model=List[Warehouse])
+def list_warehouse(request: Request):
+    aggregation = [{ "$unwind": "$stock" }, { "$group": { "_id": "$_id", "items": { "$addToSet": "$stock.product_id" },"totalStock":{"$sum":"$stock.quantity" } }},{"$project": {"_id":"$_id","totalStock":"$totalStock","totalItem":{"$size":"$items"}}}]
+    warehouse = list(request.app.database["storage"].aggregate(aggregation))
+    return warehouse
 
 
 
