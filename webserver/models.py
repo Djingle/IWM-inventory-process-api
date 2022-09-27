@@ -1,3 +1,4 @@
+from typing import List
 from pydantic import BaseModel, Field
 from bson import ObjectId
 
@@ -33,12 +34,16 @@ class Product(BaseModel):
         }
 
 
-class storage(BaseModel):
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
-    warehouse: str = Field(None,alias="warehouse")
+class ElementStorage(BaseModel):
     location: str = Field(None,alias="location")
     product_id : PyObjectId = Field(default_factory=PyObjectId, alias="product_id")
     quantity : int = Field(None,alias="quantity")
+
+class Storage(BaseModel):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    warehouse: str = Field(None,alias="warehouse")
+    stock: List[ElementStorage] = Field(None,alias="stock")
+    
 
     class Config:
         allow_population_by_field_name = True
@@ -47,6 +52,9 @@ class storage(BaseModel):
         schema_extra = {
             "example": {
                 "_id": "ObjectId(\"ab46513246546546578797\")",
-                "label": "Don Quixote"
+                "warehouse": "MAG1",
+                "location" : "A-02-02-03",
+                "product_id" : "ObjectId(\"6332222fb6ed1eb4112e2061\")",
+                "quantity" : "100"
             }
         }

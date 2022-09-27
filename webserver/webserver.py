@@ -123,5 +123,11 @@ def list_products(request: Request):
     products = list(request.app.database["product"].find(limit=100))
     return products
 
+@IWMI_api.get("/storage", response_description="List all Storages", response_model=List[Storage])
+def list_storages(request: Request):
+    storages = list(request.app.database["storage"].find(limit=100))
+    return storages
+
+
 
 
