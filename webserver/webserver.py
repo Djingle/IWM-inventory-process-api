@@ -110,6 +110,24 @@ class Product(BaseModel):
         }
 
 
+class storage(BaseModel):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    warehouse: str = Field(None,alias="warehouse")
+    location: str = Field(None,alias="location")
+    product_id : PyObjectId = Field(default_factory=PyObjectId, alias="product_id")
+    quantity : int = Field(None,alias="quantity")
+
+    class Config:
+        allow_population_by_field_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+        schema_extra = {
+            "example": {
+                "_id": "ObjectId(\"ab46513246546546578797\")",
+                "label": "Don Quixote"
+            }
+        }
+
 @IWMI_api.get("/product/{productID}", response_description="Get a single product by id", response_model=Product)
 async def productsWithID(productID: PyObjectId, request: Request):
     # todo : request all products and send it in the following form, using "productID" as id of the product :
@@ -117,9 +135,14 @@ async def productsWithID(productID: PyObjectId, request: Request):
         return product
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Product with ID {productID} not found")
 
-@IWMI_api.get("/product", response_description="List all books", response_model=List[Product])
+@IWMI_api.get("/product", response_description="List all Products", response_model=List[Product])
 def list_products(request: Request):
     products = list(request.app.database["product"].find(limit=100))
     return products
 
+
+@IWMI_api.get("/product", response_description="List all Products", response_model=List[Product])
+def list_products(request: Request):
+    products = list(request.app.database["product"].find(limit=100))
+    return products
 
