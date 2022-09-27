@@ -3,7 +3,7 @@
 - https://www.mongodb.com/languages/python/pymongo-tutorial
 
 ## Installation
-```python3 -m pip install 'fastapi[all]' 'pymongo[srv]' python-dotenv xmltodict```
+```pip install -r requirements.txt```
 
 ## Lancement
 ```python3 -m uvicorn webserver:IWMI_api```
