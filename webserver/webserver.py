@@ -6,8 +6,10 @@ import uuid
 from typing import Optional
 from pydantic import BaseModel, Field
 from typing import List
+import xmltodict
 
 
+######################## Database objects ########################
 class PyObjectId(ObjectId):
     @classmethod
     def __get_validators__(cls):
@@ -22,6 +24,7 @@ class PyObjectId(ObjectId):
         field_schema.update(type="string")
 
 
+######################## Server and Database connection initialisation ########################
 config = dotenv_values(".env")
 
 IWMI_api = FastAPI()
@@ -32,11 +35,9 @@ def startup_db_client():
     IWMI_api.database = IWMI_api.mongodb_client[config["DB_NAME"]]
     print("Connected to the MongoDB database!")
 
-
 @IWMI_api.on_event("shutdown")
 def shutdown_db_client():
     IWMI_api.mongodb_client.close()
-
 
 @IWMI_api.get("/")
 async def root():
@@ -44,6 +45,36 @@ async def root():
         "message": "Welcome to the IWMInventoryProcess API! 😳️"
     }
 
+
+######################## Drone requests ########################
+@IWMI_api.get("/drone-endpoint")
+async def droneEndpoint(req: Request, resp: Response):
+    # expect an xml file
+    if req.headers['Content-Type'] != 'application/xml':
+        return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unsupported content type (XML only).")
+    
+    # retrieve request xml content
+    xmlStr = await req.body()
+    
+    try:
+        # parse xml string to a dict
+        dictData = xmltodict.parse(xmlStr)
+        data = dictData["UpdateInventoryRequest"]["DataArea"]["IWMInventoryProcess"]
+        warehouseID = data["Warehouse"]
+        locationID = data["Location"]
+        itemID = data["Item"]
+        itemQuantity = data["Quantity"]
+        loginCode = data["LoginCode"]
+
+        # todo : fill DB with those data
+        print("XML received contains: ", warehouseID, locationID, itemID, itemQuantity, loginCode)
+
+        return HTTPException(status_code=status.HTTP_200_OK)
+    except:
+        return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Unsupported XML format.")
+
+
+######################## General requests ########################
 @IWMI_api.get("/warehouses")
 async def warehouses():
     # todo : request all warehouses and send it in the following form :
@@ -91,9 +122,6 @@ async def products():
         ]
     }
 
-
-
-
 class Product(BaseModel):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     label: str = Field(None,alias="label")
@@ -109,7 +137,6 @@ class Product(BaseModel):
             }
         }
 
-
 @IWMI_api.get("/product/{productID}", response_description="Get a single product by id", response_model=Product)
 async def productsWithID(productID: PyObjectId, request: Request):
     # todo : request all products and send it in the following form, using "productID" as id of the product :
@@ -121,5 +148,3 @@ async def productsWithID(productID: PyObjectId, request: Request):
 def list_products(request: Request):
     products = list(request.app.database["product"].find(limit=100))
     return products
-
-
