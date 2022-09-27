@@ -63,57 +63,12 @@ async def droneEndpoint(req: Request, resp: Response):
 
 
 ######################## General requests ########################
-@IWMI_api.get("/warehouse")
-async def warehouses():
-    # todo : request all warehouses and send it in the following form :
-    return { # example
-        "warehouses": [
-            {
-                "id": "XYZ",
-                "productsCount": 200,
-                "totalStock": 1450
-            },
-            {
-                "id": "UVW",
-                "productsCount": 40,
-                "totalStock": 200
-            }
-        ]
-    }
 
-@IWMI_api.get("/warehouse/{warehouseID}")
-async def warehousesWithID(warehouseID: str):
-    # todo : request all warehouses and send it in the following form, using "warehouseID" as id of the product :
-    print(warehouseID)
-    return {
-        "id": "XYZ",
-        "productsCount": 200,
-        "totalStock": 1450,
-        "inventory": { "products" : ["ABCD123", "EFGH456"] }
-    }
-
-@IWMI_api.get("/product")
-async def products():
-    # todo : request all products and send it in the following form :
-    return { # example
-        "products": [
-            {
-                "id": "XYZ",
-                "productsCount": 200,
-                "totalStock": 1450
-            },
-            {
-                "id": "UVW",
-                "productsCount": 40,
-                "totalStock": 200
-            }
-        ]
-    }
 
 
 
 @IWMI_api.get("/product/{productID}", response_description="Get a single product by id", response_model=Product)
-async def productsWithID(productID: PyObjectId, request: Request):
+async def productsWithID(productID: str, request: Request):
     # todo : request all products and send it in the following form, using "productID" as id of the product :
     if (product := request.app.database["product"].find_one({"_id": productID})) is not None:
         return product
@@ -124,10 +79,18 @@ def list_products(request: Request):
     products = list(request.app.database["product"].find(limit=100))
     return products
 
-@IWMI_api.get("/storage", response_description="List all Storages", response_model=List[Storage])
+@IWMI_api.get("/warehouse/storage", response_description="List all Storages", response_model=List[Storage])
 def list_storages(request: Request):
     storages = list(request.app.database["storage"].find(limit=100))
     return storages
+
+@IWMI_api.get("/warehouse/{warehouseID}/storage", response_description="List all Storages", response_model=Storage)
+async def warehouseStorageWithID(warehouseID: str, request: Request):
+    # todo : request all products and send it in the following form, using "productID" as id of the product :
+    if (warehouse := request.app.database["storage"].find_one({"_id": warehouseID})) is not None:
+        return warehouse
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Product with ID {warehouseID} not found")
+
 
 
 

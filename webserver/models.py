@@ -19,13 +19,12 @@ class PyObjectId(ObjectId):
 
 
 class Product(BaseModel):
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    id: str = Field(default_factory=str, alias="_id")
     label: str = Field(None,alias="label")
 
     class Config:
         allow_population_by_field_name = True
         arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
         schema_extra = {
             "example": {
                 "_id": "ObjectId(\"ab46513246546546578797\")",
@@ -36,11 +35,11 @@ class Product(BaseModel):
 
 class ElementStorage(BaseModel):
     location: str = Field(None,alias="location")
-    product_id : PyObjectId = Field(default_factory=PyObjectId, alias="product_id")
+    product_id : str = Field(None, alias="product_id")
     quantity : int = Field(None,alias="quantity")
 
 class Storage(BaseModel):
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    id: str = Field(None, alias="_id")
     warehouse: str = Field(None,alias="warehouse")
     stock: List[ElementStorage] = Field(None,alias="stock")
     
@@ -48,7 +47,6 @@ class Storage(BaseModel):
     class Config:
         allow_population_by_field_name = True
         arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
         schema_extra = {
             "example": {
                 "_id": "ObjectId(\"ab46513246546546578797\")",
