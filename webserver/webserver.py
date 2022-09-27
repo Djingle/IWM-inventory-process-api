@@ -6,22 +6,12 @@ import uuid
 from typing import Optional
 from pydantic import BaseModel, Field
 from typing import List
+import xmltodict
+from models import *
 
 
-class PyObjectId(ObjectId):
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
-    @classmethod
-    def validate(cls, v):
-        if not ObjectId.is_valid(v):
-            raise ValueError("Invalid objectid")
-        return ObjectId(v)
-    @classmethod
-    def __modify_schema__(cls, field_schema):
-        field_schema.update(type="string")
 
-
+######################## Server and Database connection initialisation ########################
 config = dotenv_values(".env")
 
 IWMI_api = FastAPI()
@@ -32,11 +22,9 @@ def startup_db_client():
     IWMI_api.database = IWMI_api.mongodb_client[config["DB_NAME"]]
     print("Connected to the MongoDB database!")
 
-
 @IWMI_api.on_event("shutdown")
 def shutdown_db_client():
     IWMI_api.mongodb_client.close()
-
 
 @IWMI_api.get("/")
 async def root():
@@ -44,6 +32,36 @@ async def root():
         "message": "Welcome to the IWMInventoryProcess API! 😳️"
     }
 
+
+######################## Drone requests ########################
+@IWMI_api.get("/drone-endpoint")
+async def droneEndpoint(req: Request, resp: Response):
+    # expect an xml file
+    if req.headers['Content-Type'] != 'application/xml':
+        return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unsupported content type (XML only).")
+    
+    # retrieve request xml content
+    xmlStr = await req.body()
+    
+    try:
+        # parse xml string to a dict
+        dictData = xmltodict.parse(xmlStr)
+        data = dictData["UpdateInventoryRequest"]["DataArea"]["IWMInventoryProcess"]
+        warehouseID = data["Warehouse"]
+        locationID = data["Location"]
+        itemID = data["Item"]
+        itemQuantity = data["Quantity"]
+        loginCode = data["LoginCode"]
+
+        # todo : fill DB with those data
+        print("XML received contains: ", warehouseID, locationID, itemID, itemQuantity, loginCode)
+
+        return HTTPException(status_code=status.HTTP_200_OK)
+    except:
+        return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Unsupported XML format.")
+
+
+######################## General requests ########################
 @IWMI_api.get("/warehouses")
 async def warehouses():
     # todo : request all warehouses and send it in the following form :
@@ -93,41 +111,6 @@ async def products():
 
 
 
-
-class Product(BaseModel):
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
-    label: str = Field(None,alias="label")
-
-    class Config:
-        allow_population_by_field_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
-        schema_extra = {
-            "example": {
-                "_id": "ObjectId(\"ab46513246546546578797\")",
-                "label": "Don Quixote"
-            }
-        }
-
-
-class storage(BaseModel):
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
-    warehouse: str = Field(None,alias="warehouse")
-    location: str = Field(None,alias="location")
-    product_id : PyObjectId = Field(default_factory=PyObjectId, alias="product_id")
-    quantity : int = Field(None,alias="quantity")
-
-    class Config:
-        allow_population_by_field_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
-        schema_extra = {
-            "example": {
-                "_id": "ObjectId(\"ab46513246546546578797\")",
-                "label": "Don Quixote"
-            }
-        }
-
 @IWMI_api.get("/product/{productID}", response_description="Get a single product by id", response_model=Product)
 async def productsWithID(productID: PyObjectId, request: Request):
     # todo : request all products and send it in the following form, using "productID" as id of the product :
@@ -141,8 +124,4 @@ def list_products(request: Request):
     return products
 
 
-@IWMI_api.get("/product", response_description="List all Products", response_model=List[Product])
-def list_products(request: Request):
-    products = list(request.app.database["product"].find(limit=100))
-    return products
 
