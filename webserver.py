@@ -8,13 +8,20 @@ from pydantic import BaseModel, Field
 from typing import List
 import xmltodict
 from models import *
-
-
+from fastapi.middleware.cors import CORSMiddleware
 
 ######################## Server and Database connection initialisation ########################
 config = dotenv_values(".env")
 
 IWMI_api = FastAPI()
+
+IWMI_api.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 
 @IWMI_api.on_event("startup")
 def startup_db_client():
@@ -49,11 +56,17 @@ async def droneEndpoint(req: Request, resp: Response):
         # parse xml string to a dict
         dictData = xmltodict.parse(xmlStr)
         data = dictData["UpdateInventoryRequest"]["DataArea"]["IWMInventoryProcess"]
+
         warehouseID = data["Warehouse"]
         locationID = data["Location"]
         itemID = data["Item"]
         itemQuantity = data["Quantity"]
         loginCode = data["LoginCode"]
+
+        jsonStr = '{"pid":"'+itemID+'","date":"1999-12-31T23:00:00","wid":"'+warehouseID+'","movement_type":"adjust","quantity":'+itemQuantity+',"location":'+locationID+'}'
+
+        # request.app.database["entry"].
+        print(jsonStr)
 
         # todo : fill DB with those data
         # print("XML received contains: ", warehouseID, locationID, itemID, itemQuantity, loginCode)
