@@ -55,7 +55,7 @@ async def verify_location(warehouseID:str,locationID:str,productID:str,req:Reque
     return list(req.app.database["storage"].aggregate([{"$unwind":"$stock"},{"$match":{"_id":warehouseID}},{"$match":{"$and" :[{"stock.location":locationID},{"$or" :[{"stock.quantity":0},{"stock.product_id":productID}]}]}}]))
 
 async def verify_not_location(warehouseID:str,locationID:str,req:Request):
-    return list(req.app.database["storage"].aggregate([{"$unwind":"$stock"},{"$match":{"_id":warehouseID}},{"$match":{"location":locationID}}]))
+    return list(req.app.database["storage"].aggregate([{"$unwind":"$stock"},{"$match":{"_id":warehouseID}},{"$match":{"stock.location":locationID}}]))
 
 
 @IWMI_api.post("/drone-endpoint")
@@ -98,18 +98,18 @@ async def droneEndpoint(req: Request, resp: Response):
 
         print(locationID)
         print("3")
-        print(test3)
-        print(test4)
+        print(test3[0] is not None)
+        print(test4[0]is None)
         if( test is None):
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Please input an existing warehouse")
 
         if( test2 is None):
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Please input an existing product")
-        if(test4 is None):
-            req.app.database["storage"].update({"_id":warehouseID},{"$addFields" : {"stock.$.quantity" : itemQuantity,"stock.$.product_id" : itemID,"stock.$.location" : locationID}})
+        if(test4[0] is None):
+            await req.app.database["storage"].update({"_id":warehouseID},{"$addFields" : {"stock.$.quantity" : itemQuantity,"stock.$.product_id" : itemID,"stock.$.location" : locationID}})
 
         if( test3[0] is not None):
-            req.app.database["storage"].update({"_id":warehouseID,"stock.location" : locationID},{"$set" : {"stock.$.quantity" : itemQuantity}})
+            await req.app.database["storage"].update({"_id":warehouseID,"stock.location" : locationID},{"$set" : {"stock.$.quantity" : itemQuantity}})
         else:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Another product existing at this location")
 
