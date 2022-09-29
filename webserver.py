@@ -31,6 +31,7 @@ async def root():
     return { # example
         "message": "Welcome to the IWMInventoryProcess API! 😳️",
         "illustration": "https://cdn.discordapp.com/attachments/1016694266099146793/1024278535847809054/mamazon.png"
+        # "documentation": ""
     }
 
 
@@ -55,12 +56,17 @@ async def droneEndpoint(req: Request, resp: Response):
         loginCode = data["LoginCode"]
 
         # todo : fill DB with those data
-        print("XML received contains: ", warehouseID, locationID, itemID, itemQuantity, loginCode)
+        # print("XML received contains: ", warehouseID, locationID, itemID, itemQuantity, loginCode)
+
 
         return HTTPException(status_code=status.HTTP_200_OK)
     except:
         return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Unsupported XML format.")
 
+@IWMI_api.get("/entry", response_description="Get a list of entries", response_model=List[Entry])
+async def listEntries(request: Request):
+    entries = list(request.app.database["entry"].find())
+    return entries
 
 ######################## General requests ########################
 

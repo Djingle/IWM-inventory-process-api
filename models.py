@@ -1,5 +1,6 @@
 from typing import List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
+from datetime import datetime, date
 from bson import ObjectId
 
 ######################## Database objects ########################
@@ -69,4 +70,27 @@ class Warehouse(BaseModel):
                 "totalStock": "125",
                 "totalItems" : "3",
             }
+        }
+
+class Entry(BaseModel):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    pid: str = Field(None, alias="pid")
+    date: datetime = Field(None, alias="date")
+    wid: str = Field(None, alias="wid")
+    movement_type: str = Field(None, alias="movement_type")
+    quantity: int = Field(None, alias="quantity")
+
+    # @validator('movement_type')
+    # def movement_type_must_exists(cls, value):
+    #     isValid = value == "in" or value == "out" or value == "adjust"
+    #     if isValid:
+    #         return value
+    #     raise ValueError("movement_type is not of type 'in' or 'out' or 'adjust'")
+
+    class Config():
+        json_encoders = { ObjectId: str }
+        # allow_population_by_field_name = True
+        # arbitrary_types_allowed = True
+        schema_extra = {
+
         }
