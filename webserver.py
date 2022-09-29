@@ -44,7 +44,7 @@ async def root():
 
 
 ######################## Drone requests ########################
-@IWMI_api.get("/drone-endpoint")
+@IWMI_api.post("/drone-endpoint")
 async def droneEndpoint(req: Request, resp: Response):
     # expect an xml file
     if req.headers['Content-Type'] != 'application/xml':
