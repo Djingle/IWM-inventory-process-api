@@ -89,11 +89,11 @@ class Entry(BaseModel):
             return value
         raise ValueError("movement_type is not of type 'in' or 'out' or 'adjust'")
 
-    @validator('wid')
-    def wid_is_valid(cls, value):
-        if re.match('^MAG[0-9]$', value):
-            return value
-        raise ValueError("wid is not in a valid MAG<x> format.")
+    # @validator('wid')
+    # def wid_is_valid(cls, value):
+    #     if re.match('^MAG[0-9]$', value):
+    #         return value
+    #     raise ValueError("wid is not in a valid MAG<x> format.")
 
     class Config():
         json_encoders = { ObjectId: str }

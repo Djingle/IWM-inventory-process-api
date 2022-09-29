@@ -15,8 +15,8 @@ body = """<?xml version="1.0"?>
 
 headers = {'Content-Type': 'application/xml'}
 
-url = 'http://127.0.0.1:8000/drone-endpoint' # changer l'URL ici au besoin
-# url = 'https://iwmi.herokuapp.com/drone-endpoint'
+# url = 'http://127.0.0.1:8000/drone-endpoint' # changer l'URL ici au besoin
+url = 'https://iwmi.herokuapp.com/drone-endpoint'
 
 r = requests.post(url, data=body.encode('utf-8'), headers=headers)
 print(r)
