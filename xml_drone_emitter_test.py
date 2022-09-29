@@ -4,7 +4,7 @@ body = """<?xml version="1.0"?>
 <UpdateInventoryRequest>
     <DataArea>
         <IWMInventoryProcess>
-            <Warehouse>MAG1</Warehouse>
+            <Warehouse>MAG2</Warehouse>
             <Location>A-02-02-03</Location>
             <Item>E961307</Item>
             <Quantity>100</Quantity>

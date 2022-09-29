@@ -44,6 +44,12 @@ async def root():
 
 
 ######################## Drone requests ########################
+
+
+
+
+
+
 @IWMI_api.get("/drone-endpoint")
 async def droneEndpoint(req: Request, resp: Response):
     # expect an xml file
@@ -70,24 +76,32 @@ async def droneEndpoint(req: Request, resp: Response):
             "date":datetime.today(),
             "movement_type":"adjust",
             "quantity":itemQuantity,
-            "location":locationID
+            "location":locationID,
+            "login":loginCode
         }
+        
+        #test = await verify_warehouse(warehouseID)
+        test = req.app.database["storage"].find_one({"_id": warehouseID})
+        print(test is None)
+        response =HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
+        if( test is None):
+            response = HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Please input an existing warehouse")
+        else :
+            req.app.database["entry"].insert_one(jsonDict)
 
-        req.app.database["entry"].insert_one(jsonDict)
-
-        return HTTPException(status_code=status.HTTP_200_OK)
+        return response
     except:
         return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Unsupported XML format.")
+
+
+
+######################## General requests ########################
+
 
 @IWMI_api.get("/entry", response_description="Get a list of entries", response_model=List[Entry])
 async def listEntries(request: Request):
     entries = list(request.app.database["entry"].find())
     return entries
-
-######################## General requests ########################
-
-
-
 
 @IWMI_api.get("/product/{productID}", response_description="Get a single product by id", response_model=Product)
 async def productsWithID(productID: str, request: Request):
@@ -101,6 +115,9 @@ def list_products(request: Request):
     products = list(request.app.database["product"].find(limit=100))
     return products
 
+
+
+
 @IWMI_api.get("/warehouse/storage", response_description="List all Storages", response_model=List[Storage])
 def list_storages(request: Request):
     storages = list(request.app.database["storage"].find(limit=100))
@@ -108,14 +125,23 @@ def list_storages(request: Request):
 
 @IWMI_api.get("/warehouse/{warehouseID}/storage", response_description="List all Storages", response_model=Storage)
 async def warehouseStorageWithID(warehouseID: str, request: Request):
-    # todo : request all products and send it in the following form, using "productID" as id of the product :
-    if (warehouse := request.app.database["storage"].find_one({"_id": warehouseID})) is not None:
-        return warehouse
+    if (storage := request.app.database["storage"].find_one({"_id": warehouseID})) is not None:
+        return storage
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Product with ID {warehouseID} not found")
+
+
+
+
 
 @IWMI_api.get("/warehouse", response_description="List total storage and items for each  warehouse ", response_model=List[Warehouse])
 def list_warehouse(request: Request):
     aggregation = [{ "$unwind": "$stock" }, { "$group": { "_id": "$_id", "items": { "$addToSet": "$stock.product_id" },"totalStock":{"$sum":"$stock.quantity" } }},{"$project": {"_id":"$_id","totalStock":"$totalStock","totalItem":{"$size":"$items"}}}]
+    warehouse = list(request.app.database["storage"].aggregate(aggregation))
+    return warehouse
+
+@IWMI_api.get("/warehouse/{warehouseID}", response_description="List total storage and items for a warehouse ", response_model=List[Warehouse])
+def warehouseWithID(warehouseID:str,request: Request):
+    aggregation = [{"$match":{"_id":warehouseID}},{ "$unwind": "$stock" }, { "$group": { "_id": "$_id", "items": { "$addToSet": "$stock.product_id" },"totalStock":{"$sum":"$stock.quantity" } }},{"$project": {"_id":"$_id","totalStock":"$totalStock","totalItem":{"$size":"$items"}}}]
     warehouse = list(request.app.database["storage"].aggregate(aggregation))
     return warehouse
 
