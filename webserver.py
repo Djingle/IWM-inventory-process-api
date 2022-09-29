@@ -108,16 +108,17 @@ async def droneEndpoint(req: Request, resp: Response):
     if test2 is None:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Please input an existing product")
 
-    if test4[0] is None:
-        await req.app.database["storage"].update({"_id":warehouseID},{"$addFields" : {"stock.$.quantity" : itemQuantity,"stock.$.product_id" : itemID,"stock.$.location" : locationID}})
+    if len(test4) == 0:
+        req.app.database["storage"].update_one({"_id":warehouseID},{"$push" : {"stock" :{"quantity": itemQuantity,"product_id" : itemID,"location" : locationID}}})
     
-    if test3[0] is not None:
-        await req.app.database["storage"].update({"_id":warehouseID,"stock.location" : locationID},{"$set" : {"stock.$.quantity" : itemQuantity}})
+    if len(test3)!=0:
+        req.app.database["storage"].update_one({"_id":warehouseID,"stock.location" : locationID},{"$set" : {"stock.$.quantity" : itemQuantity}})
+        req.app.database["entry"].insert_one(jsonDict)
+        raise HTTPException(status_code=status.HTTP_200_OK)
     else:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Another product existing at this location")
 
     req.app.database["entry"].insert_one(jsonDict)
-
     raise HTTPException(status_code=status.HTTP_200_OK)
 
 

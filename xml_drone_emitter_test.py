@@ -5,9 +5,9 @@ body = """<?xml version="1.0"?>
     <DataArea>
         <IWMInventoryProcess>
             <Warehouse>MAG3</Warehouse>
-            <Location>Z-05-02-03</Location>
+            <Location>M-05-02-03</Location>
             <Item>E546284</Item>
-            <Quantity>100</Quantity>
+            <Quantity>1200000</Quantity>
             <LoginCode>aai</LoginCode>
         </IWMInventoryProcess>
     </DataArea>
