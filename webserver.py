@@ -9,6 +9,7 @@ from typing import List
 import xmltodict
 from models import *
 from fastapi.middleware.cors import CORSMiddleware
+from datetime import date
 
 ######################## Server and Database connection initialisation ########################
 config = dotenv_values(".env")
@@ -62,15 +63,17 @@ async def droneEndpoint(req: Request, resp: Response):
         itemID = data["Item"]
         itemQuantity = data["Quantity"]
         loginCode = data["LoginCode"]
+        
+        jsonDict = {
+            "pid":itemID,
+            "wid":warehouseID,
+            "date":datetime.today(),
+            "movement_type":"adjust",
+            "quantity":itemQuantity,
+            "location":locationID
+        }
 
-        jsonStr = '{"pid":"'+itemID+'","date":"1999-12-31T23:00:00","wid":"'+warehouseID+'","movement_type":"adjust","quantity":'+itemQuantity+',"location":'+locationID+'}'
-
-        # request.app.database["entry"].
-        print(jsonStr)
-
-        # todo : fill DB with those data
-        # print("XML received contains: ", warehouseID, locationID, itemID, itemQuantity, loginCode)
-
+        req.app.database["entry"].insert_one(jsonDict)
 
         return HTTPException(status_code=status.HTTP_200_OK)
     except:
