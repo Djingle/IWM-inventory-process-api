@@ -45,17 +45,17 @@ async def root():
 
 
 ######################## Drone requests ########################
-def verify_warehouse(warehouseID:str,  req:Request):
+async def verify_warehouse(warehouseID:str,  req:Request):
     return req.app.database["storage"].find_one({"_id": warehouseID})
 
-def verify_product(productID:str,  req:Request):
+async def verify_product(productID:str,  req:Request):
     return req.app.database["product"].find_one({"_id": productID})
 
-def verify_location(warehouseID:str,locationID:str,productID:str,req:Request):
-    return req.app.database["storage"].aggregate({"$unwind":"$stock"},{"$match":{"_id":warehouseID}},{"$match":{"$and" :[{"location":locationID},{"$or" :[{"quantity":0},{"product_id":productID}]}]}})
+async def verify_location(warehouseID:str,locationID:str,productID:str,req:Request):
+    return list(req.app.database["storage"].aggregate([{"$unwind":"$stock"},{"$match":{"_id":warehouseID}},{"$match":{"$and" :[{"stock.location":locationID},{"$or" :[{"stock.quantity":0},{"stock.product_id":productID}]}]}}]))
 
-def verify_not_location(warehouseID:str,locationID:str,req:Request):
-    return req.app.database["storage"].aggregate({"$unwind":"$stock"},{"$match":{"_id":warehouseID}},{"$match":{"location":locationID}})
+async def verify_not_location(warehouseID:str,locationID:str,req:Request):
+    return list(req.app.database["storage"].aggregate([{"$unwind":"$stock"},{"$match":{"_id":warehouseID}},{"$match":{"location":locationID}}]))
 
 
 @IWMI_api.post("/drone-endpoint")
@@ -68,59 +68,57 @@ async def droneEndpoint(req: Request, resp: Response):
 
     xmlStr = await req.body()
     
-    data = {}
-    warehouseID = ""
-    locationID = ""
-    itemID = ""
-    itemQuantity = ""
-    loginCode = ""
     try:
         # parse xml string to a dict
         dictData = xmltodict.parse(xmlStr)
         data = dictData["UpdateInventoryRequest"]["DataArea"]["IWMInventoryProcess"]
+
         warehouseID = data["Warehouse"]
         locationID = data["Location"]
         itemID = data["Item"]
         itemQuantity = data["Quantity"]
         loginCode = data["LoginCode"]
+        
+        jsonDict = {
+            "pid":itemID,
+            "wid":warehouseID,
+            "date":datetime.today(),
+            "movement_type":"adjust",
+            "quantity":itemQuantity,
+            "location":locationID,
+            "login":loginCode
+        }
+        
+        #test = await verify_warehouse(warehouseID)
+        test =   await verify_warehouse(warehouseID,req)
+        test2 =  await verify_product(itemID,req)
+        test3 =  await  verify_location(warehouseID,locationID,itemID,req)
+        test4 =  await verify_not_location(warehouseID,locationID,req)
+
+
+        print(locationID)
+        print("3")
+        print(test3)
+        print(test4)
+        if( test is None):
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Please input an existing warehouse")
+
+        if( test2 is None):
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Please input an existing product")
+        if(test4 is None):
+            req.app.database["storage"].update({"_id":warehouseID},{"$addFields" : {"stock.$.quantity" : itemQuantity,"stock.$.product_id" : itemID,"stock.$.location" : locationID}})
+
+        if( test3[0] is not None):
+            req.app.database["storage"].update({"_id":warehouseID,"stock.location" : locationID},{"$set" : {"stock.$.quantity" : itemQuantity}})
+        else:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Another product existing at this location")
+
+        req.app.database["entry"].insert_one(jsonDict)
+
+        raise HTTPException(status_code=status.HTTP_200_OK)
+
     except:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Unsupported XML format or invalid syntax.")
-    
-    #test = await verify_warehouse(warehouseID)
-    test = verify_warehouse(warehouseID,req)
-    test2 = verify_product(itemID,req)
-    # test3 = verify_location(warehouseID,itemID,locationID,req)
-    # test4 = verify_not_location(warehouseID,locationID,req)
-    # print(test)
-    # print(test2)
-    # print(test3)
-    # print(test4)
-    # if( test is None):
-    #     raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Please input an existing warehouse")
-
-    # if( test2 is None):
-    #     raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Please input an existing product")
-    
-    # if(test4 is None):
-    #         req.app.database["storage"].update({"_id":warehouseID},{"$addFields" : {"stock.$.quantity" : itemQuantity,"stock.$.product_id" : itemID,"stock.$.location" : locationID}})
-
-    # if( test3 is not None):
-    #     req.app.database["storage"].update({"_id":warehouseID,"stock.location" : locationID},{"$set" : {"stock.$.quantity" : itemQuantity}})
-    # else:
-    #     raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Another product existing at this location")
-    
-    jsonDict = {
-        "pid":itemID,
-        "wid":warehouseID,
-        "date":datetime.today(),
-        "movement_type":"adjust",
-        "quantity":itemQuantity,
-        "location":locationID,
-        "login":loginCode
-    }
-
-    # req.app.database["entry"].insert_one(jsonDict)
-    raise HTTPException(status_code=status.HTTP_200_OK)
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Unsupported XML format.")
 
 
 
