@@ -55,6 +55,7 @@ async def root():
             <a href='./product/' target='blank_'>Product</a><br>
             <a href='./entry/' target='blank_'>Entry</a><br>
             <a href='./drone-endpoint/' target='blank_'>Drone</a><br>
+            <a href='./adjustment/' target='blank_'>Adjustment</a><br>
         </div>
         </body>
     </html>
@@ -155,39 +156,44 @@ async def adjustment(req: Request, resp: Response):
 
     if req.headers['Content-Type'] != 'application/json':
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unsupported content type (json only).")
-    reqB = await req.json()
-    print(reqB)
 
+    reqB = {}
+    wid = ""
+    pid = ""
+    location = ""
+    quantity = ""
     try:
+        reqB = await req.json()
+        wid = reqB["wid"]
+        pid = reqB["pid"]
+        location = reqB["location"]
+        quantity = reqB["quantity"]
         reqB["date"] = datetime.today()
     except:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Unsupported json format.")
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Unsupported of invalid json format.")
 
-    test =   await verify_warehouse(reqB["wid"],req)
+    test =   await verify_warehouse(wid,req)
     print(test)
-    test2 =  await verify_product(reqB["pid"],req)
+    test2 =  await verify_product(pid,req)
     print(test2)
-    test3 =  await  verify_location(reqB["wid"],reqB["location"],reqB["pid"],req)
-    test4 =  await verify_not_location(reqB["wid"],reqB["location"],req)
+    test3 =  await  verify_location(wid,location,pid,req)
+    test4 =  await verify_not_location(wid,location,req)
 
-
-    if( test is None):
+    if test is None:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Please input an existing warehouse")
 
-    if( test2 is None):
+    if test2 is None:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Please input an existing product")
     if len(test4) == 0:
-        req.app.database["storage"].update_one({"_id":reqB["wid"]},{"$push" : {"stock" :{"quantity": reqB["quantity"],"product_id" : reqB["pid"],"location" : reqB["location"]}}})
+        req.app.database["storage"].update_one({"_id":wid},{"$push" : {"stock" :{"quantity": quantity,"product_id" : pid,"location" : location}}})
         req.app.database["entry"].insert_one(reqB)
         raise HTTPException(status_code=status.HTTP_200_OK)
     if len(test3)!=0:
-        req.app.database["storage"].update_one({"_id":reqB["wid"],"stock.location" : reqB["location"]},{"$set" : {"stock.$.quantity" : reqB["quantity"]}})
+        req.app.database["storage"].update_one({"_id":wid,"stock.location" : location},{"$set" : {"stock.$.quantity" : quantity}})
 
     req.app.database["entry"].insert_one(reqB)
 
-
     raise HTTPException(status_code=status.HTTP_200_OK)
-
 
 
 @IWMI_api.get("/product/{productID}", response_description="Get a single product by id", response_model=Product)
@@ -214,9 +220,6 @@ async def warehouseStorageWithID(warehouseID: str, request: Request):
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Warehouse with ID {warehouseID} not found")
 
 
-
-
-
 @IWMI_api.get("/warehouse", response_description="List total storage and items for each  warehouse ", response_model=List[Warehouse])
 def list_warehouse(request: Request):
     aggregation = [{ "$unwind": "$stock" }, { "$group": { "_id": "$_id", "items": { "$addToSet": "$stock.product_id" },"totalStock":{"$sum":"$stock.quantity" } }},{"$project": {"_id":"$_id","totalStock":"$totalStock","totalItem":{"$size":"$items"}}}]
@@ -228,7 +231,3 @@ def warehouseWithID(warehouseID:str,request: Request):
     aggregation = [{"$match":{"_id":warehouseID}},{ "$unwind": "$stock" }, { "$group": { "_id": "$_id", "items": { "$addToSet": "$stock.product_id" },"totalStock":{"$sum":"$stock.quantity" } }},{"$project": {"_id":"$_id","totalStock":"$totalStock","totalItem":{"$size":"$items"}}}]
     warehouse = list(request.app.database["storage"].aggregate(aggregation))
     return warehouse
-
-
-
-
