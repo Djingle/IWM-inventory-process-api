@@ -142,10 +142,31 @@ async def adjustment(req: Request, resp: Response):
 
     try:
         reqB["date"] = datetime.today()
+
+        test =   await verify_warehouse(reqB["wid"],req)
+        test2 =  await verify_product(reqB["pid"],req)
+        test3 =  await  verify_location(reqB["wid"],reqB["location"],reqB["pid"],req)
+        test4 =  await verify_not_location(reqB["wid"],reqB["location"],req)
+
+
+        if( test is None):
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Please input an existing warehouse")
+
+        if( test2 is None):
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Please input an existing product")
+        if(test4[0] is None):
+            await req.app.database["storage"].update({"_id":reqB["wid"]},{"$addFields" : {"stock.$.quantity" : reqB["quantity"],"stock.$.product_id" : reqB["pid"],"stock.$.location" : reqB["location"]}})
+
+        if( test3[0] is not None):
+            await req.app.database["storage"].update({"_id":reqB["wid"],"stock.location" : reqB["location"]},{"$set" : {"stock.$.quantity" : reqB["quantity"]}})
+        else:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Another product existing at this location")
+
         req.app.database["entry"].insert_one(reqB)
+
     except:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Unsupported json format.")
-    
+
     raise HTTPException(status_code=status.HTTP_200_OK)
 
 
@@ -161,9 +182,6 @@ async def productsWithID(productID: str, request: Request):
 def list_products(request: Request):
     products = list(request.app.database["product"].find(limit=100))
     return products
-
-
-
 
 @IWMI_api.get("/warehouse/storage", response_description="List all Storages", response_model=List[Storage])
 def list_storages(request: Request):
