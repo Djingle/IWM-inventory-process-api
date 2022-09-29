@@ -2,6 +2,7 @@ from typing import List
 from pydantic import BaseModel, Field, validator
 from datetime import datetime, date
 from bson import ObjectId
+import re
 
 ######################## Database objects ########################
 class PyObjectId(ObjectId):
@@ -79,13 +80,20 @@ class Entry(BaseModel):
     wid: str = Field(None, alias="wid")
     movement_type: str = Field(None, alias="movement_type")
     quantity: int = Field(None, alias="quantity")
+    location: str = Field(None,alias="location")
 
-    # @validator('movement_type')
-    # def movement_type_must_exists(cls, value):
-    #     isValid = value == "in" or value == "out" or value == "adjust"
-    #     if isValid:
-    #         return value
-    #     raise ValueError("movement_type is not of type 'in' or 'out' or 'adjust'")
+    @validator('movement_type')
+    def movement_type_must_exists(cls, value):
+        isValid = value == "in" or value == "out" or value == "adjust"
+        if isValid:
+            return value
+        raise ValueError("movement_type is not of type 'in' or 'out' or 'adjust'")
+
+    @validator('wid')
+    def wid_is_valid(cls, value):
+        if re.match('^MAG[0-9]$', value):
+            return value
+        raise ValueError("wid is not in a valid MAG<x> format.")
 
     class Config():
         json_encoders = { ObjectId: str }
