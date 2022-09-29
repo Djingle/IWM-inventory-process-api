@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from typing import List
 import xmltodict
 from models import *
+import json
 
 
 
@@ -58,7 +59,6 @@ async def droneEndpoint(req: Request, resp: Response):
         # todo : fill DB with those data
         # print("XML received contains: ", warehouseID, locationID, itemID, itemQuantity, loginCode)
 
-
         return HTTPException(status_code=status.HTTP_200_OK)
     except:
         return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Unsupported XML format.")
@@ -70,6 +70,24 @@ async def listEntries(request: Request):
 
 ######################## General requests ########################
 
+
+@IWMI_api.post("/adjustment")
+async def adjustment(req: Request, resp: Response):
+    dictData = json.load(req)
+    data = dictData["UpdateInventoryRequest"]
+    warehouseID = data["Warehouse"]
+    locationID = data["Location"]
+    itemID = data["Item"]
+    itemQuantity = data["Quantity"]
+    loginCode = data["LoginCode"]
+
+    # Compute quantity adjusted for the entry table
+    oldStock = req.app.database["product"].find({},{"pid":itemID})["quantity"]
+    move_quantity = itemQuantity - oldStock
+
+    # todo : add an entry in entry table
+    
+    req.app.database["product"].update_one()
 
 
 
