@@ -68,49 +68,59 @@ async def droneEndpoint(req: Request, resp: Response):
 
     xmlStr = await req.body()
     
+    data = {}
+    warehouseID = ""
+    locationID = ""
+    itemID = ""
+    itemQuantity = ""
+    loginCode = ""
     try:
         # parse xml string to a dict
         dictData = xmltodict.parse(xmlStr)
         data = dictData["UpdateInventoryRequest"]["DataArea"]["IWMInventoryProcess"]
-
         warehouseID = data["Warehouse"]
         locationID = data["Location"]
         itemID = data["Item"]
         itemQuantity = data["Quantity"]
         loginCode = data["LoginCode"]
-        
-        jsonDict = {
-            "pid":itemID,
-            "wid":warehouseID,
-            "date":datetime.today(),
-            "movement_type":"adjust",
-            "quantity":itemQuantity,
-            "location":locationID,
-            "login":loginCode
-        }
-        
-        #test = await verify_warehouse(warehouseID)
-        test =   verify_warehouse(warehouseID,req)
-        test2 =  verify_product(itemID,req)
-        test3 =  verify_location(warehouseID,itemID,locationID,req)
-        test4 =  verify_not_location(warehouseID,locationID,req)
-        print(test)
-        print(test2)
-        print(test3)
-        print(test4)
-        if( test is None):
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Please input an existing warehouse")
-
-        if( test2 is None):
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Please input an existing product")
-
-
-        req.app.database["entry"].insert_one(jsonDict)
-
-        raise HTTPException(status_code=status.HTTP_200_OK)
-
     except:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Unsupported XML format.")
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Unsupported XML format or invalid syntax.")
+    
+    #test = await verify_warehouse(warehouseID)
+    test = verify_warehouse(warehouseID,req)
+    test2 = verify_product(itemID,req)
+    # test3 = verify_location(warehouseID,itemID,locationID,req)
+    # test4 = verify_not_location(warehouseID,locationID,req)
+    # print(test)
+    # print(test2)
+    # print(test3)
+    # print(test4)
+    # if( test is None):
+    #     raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Please input an existing warehouse")
+
+    # if( test2 is None):
+    #     raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Please input an existing product")
+    
+    # if(test4 is None):
+    #         req.app.database["storage"].update({"_id":warehouseID},{"$addFields" : {"stock.$.quantity" : itemQuantity,"stock.$.product_id" : itemID,"stock.$.location" : locationID}})
+
+    # if( test3 is not None):
+    #     req.app.database["storage"].update({"_id":warehouseID,"stock.location" : locationID},{"$set" : {"stock.$.quantity" : itemQuantity}})
+    # else:
+    #     raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Another product existing at this location")
+    
+    jsonDict = {
+        "pid":itemID,
+        "wid":warehouseID,
+        "date":datetime.today(),
+        "movement_type":"adjust",
+        "quantity":itemQuantity,
+        "location":locationID,
+        "login":loginCode
+    }
+
+    # req.app.database["entry"].insert_one(jsonDict)
+    raise HTTPException(status_code=status.HTTP_200_OK)
 
 
 
