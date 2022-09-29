@@ -143,6 +143,7 @@ async def adjustment(req: Request, resp: Response):
     reqB = await req.json()
 
     try:
+        reqB["date"] = datetime.today()
         req.app.database["entry"].insert_one(reqB)
     except:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Unsupported json format.")
