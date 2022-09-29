@@ -135,21 +135,18 @@ async def listEntries(request: Request):
 
 @IWMI_api.post("/adjustment")
 async def adjustment(req: Request, resp: Response):
-    dictData = json.load(req)
-    data = dictData["UpdateInventoryRequest"]
-    warehouseID = data["Warehouse"]
-    locationID = data["Location"]
-    itemID = data["Item"]
-    itemQuantity = data["Quantity"]
-    loginCode = data["LoginCode"]
 
-    # Compute quantity adjusted for the entry table
-    oldStock = req.app.database["product"].find({},{"pid":itemID})["quantity"]
-    move_quantity = itemQuantity - oldStock
+    if req.headers['Content-Type'] != 'application/json':
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unsupported content type (json only).")
+    reqB = await req.json()
 
-    # todo : add an entry in entry table
+    try:
+        reqB["date"] = datetime.today()
+        req.app.database["entry"].insert_one(reqB)
+    except:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Unsupported json format.")
     
-    req.app.database["product"].update_one()
+    raise HTTPException(status_code=status.HTTP_200_OK)
 
 
 
