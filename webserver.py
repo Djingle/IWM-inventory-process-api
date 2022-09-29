@@ -11,6 +11,7 @@ from models import *
 import json
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import date
+from fastapi.responses import HTMLResponse
 
 ######################## Server and Database connection initialisation ########################
 config = dotenv_values(".env")
@@ -35,13 +36,29 @@ def startup_db_client():
 def shutdown_db_client():
     IWMI_api.mongodb_client.close()
 
-@IWMI_api.get("/")
+@IWMI_api.get("/", response_class=HTMLResponse)
 async def root():
-    return { # example
-        "message": "Welcome to the IWMInventoryProcess API! 😳️",
-        "illustration": "https://cdn.discordapp.com/attachments/1016694266099146793/1024278535847809054/mamazon.png"
-        # "documentation": ""
-    }
+    return """
+    <html>
+        <head>
+            <title>IWMInventoryProcess API</title>
+            <style>body{margin:0;display:flex;justify-content:center;align-items:center;height:100vh;width:100vw;background-color:#222}*{font-family:sans-serif;text-align:center;color:#222}@keyframes changewidth{from{transform:rotate(180deg) scale(0);opacity:0}to{transform:rotate(360deg) scale(1);opacity:1}}body>div{animation-duration:1.0s;animation-name:changewidth;animation-iteration-count:start;background-color:#fff;margin:10px;padding:10px;border-radius:5px;max-width:calc(100vw - 40px)}img{width:min(100vw,100px)}a:hover{color:blue}</style>
+        </head>
+        <body>
+        <div>
+            <img src='https://cdn.discordapp.com/attachments/1016694266099146793/1024278535847809054/mamazon.png'>
+            <h1>Welcome to the IWMInventoryProcess API!</h1>
+            <a href='https://docs.google.com/document/d/1Sy-UleaDQPH3S5d4rBEHHHdNTQu0rXIwxFOnTpL8Q9s/edit?usp=sharing' target='blank_'>Documentation</a><br>
+            <h2>Endpoint list</h2>
+            <a href='./warehouse' target='blank_'>Warehouse</a><br>
+            <a href='./warehouse/storage' target='blank_'>Warehouse storage</a><br>
+            <a href='./product/' target='blank_'>Product</a><br>
+            <a href='./entry/' target='blank_'>Entry</a><br>
+            <a href='./drone-endpoint/' target='blank_'>Drone</a><br>
+        </div>
+        </body>
+    </html>
+    """
 
 
 ######################## Drone requests ########################
@@ -65,9 +82,14 @@ async def droneEndpoint(req: Request, resp: Response):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unsupported content type (XML only).")
     
     # retrieve request xml content
-
     xmlStr = await req.body()
-    
+
+    data = {}
+    warehouseID = ""
+    locationID = ""
+    itemID = ""
+    itemQuantity = ""
+    loginCode = ""
     try:
         # parse xml string to a dict
         dictData = xmltodict.parse(xmlStr)
@@ -78,48 +100,43 @@ async def droneEndpoint(req: Request, resp: Response):
         itemID = data["Item"]
         itemQuantity = data["Quantity"]
         loginCode = data["LoginCode"]
-        
-        jsonDict = {
-            "pid":itemID,
-            "wid":warehouseID,
-            "date":datetime.today(),
-            "movement_type":"adjust",
-            "quantity":itemQuantity,
-            "location":locationID,
-            "login":loginCode
-        }
-        
-        #test = await verify_warehouse(warehouseID)
-        test =   await verify_warehouse(warehouseID,req)
-        test2 =  await verify_product(itemID,req)
-        test3 =  await  verify_location(warehouseID,locationID,itemID,req)
-        test4 =  await verify_not_location(warehouseID,locationID,req)
-
-
-        print(locationID)
-        print("3")
-        print(test3[0] is not None)
-        print(test4[0]is None)
-        if( test is None):
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Please input an existing warehouse")
-
-        if( test2 is None):
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Please input an existing product")
-        if(test4[0] is None):
-            await req.app.database["storage"].update({"_id":warehouseID},{"$addFields" : {"stock.$.quantity" : itemQuantity,"stock.$.product_id" : itemID,"stock.$.location" : locationID}})
-
-        if( test3[0] is not None):
-            await req.app.database["storage"].update({"_id":warehouseID,"stock.location" : locationID},{"$set" : {"stock.$.quantity" : itemQuantity}})
-        else:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Another product existing at this location")
-
-        req.app.database["entry"].insert_one(jsonDict)
-
-        raise HTTPException(status_code=status.HTTP_200_OK)
-
     except:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Unsupported XML format.")
+    
+    jsonDict = {
+        "pid":itemID,
+        "wid":warehouseID,
+        "date":datetime.today(),
+        "movement_type":"adjust",
+        "quantity":itemQuantity,
+        "location":locationID,
+        "login":loginCode
+    }
+    
+    #test = await verify_warehouse(warehouseID)
+    test  =  await verify_warehouse(warehouseID, req)
+    test2 =  await verify_product(itemID, req)
+    test3 =  await verify_location(warehouseID, locationID, itemID, req)
+    test4 =  await verify_not_location(warehouseID, locationID, req)
 
+    if test is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Please input an existing warehouse")
+
+    if test2 is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Please input an existing product")
+
+    if len(test4) == 0:
+        req.app.database["storage"].update_one({"_id":warehouseID},{"$push" : {"stock" :{"quantity": itemQuantity,"product_id" : itemID,"location" : locationID}}})
+        req.app.database["entry"].insert_one(jsonDict)
+        raise HTTPException(status_code=status.HTTP_200_OK)
+    if len(test3)!=0:
+        req.app.database["storage"].update_one({"_id":warehouseID,"stock.location" : locationID},{"$set" : {"stock.$.quantity" : itemQuantity}})
+
+    else:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Another product existing at this location")
+
+    req.app.database["entry"].insert_one(jsonDict)
+    raise HTTPException(status_code=status.HTTP_200_OK)
 
 
 ######################## General requests ########################
