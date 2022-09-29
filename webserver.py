@@ -38,11 +38,6 @@ def shutdown_db_client():
 
 @IWMI_api.get("/", response_class=HTMLResponse)
 async def root():
-    # return {
-    #     "message": "Welcome to the IWMInventoryProcess API! 😳️",
-    #     "illustration": "https://cdn.discordapp.com/attachments/1016694266099146793/1024278535847809054/mamazon.png",
-    #     "documentation": "https://docs.google.com/document/d/1Sy-UleaDQPH3S5d4rBEHHHdNTQu0rXIwxFOnTpL8Q9s/edit?usp=sharing"
-    # }
     return """
     <html>
         <head>
@@ -130,16 +125,17 @@ async def droneEndpoint(req: Request, resp: Response):
     if test2 is None:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Please input an existing product")
 
-    if test4[0] is None:
-        await req.app.database["storage"].update({"_id":warehouseID},{"$addFields" : {"stock.$.quantity" : itemQuantity,"stock.$.product_id" : itemID,"stock.$.location" : locationID}})
+    if len(test4) == 0:
+        req.app.database["storage"].update_one({"_id":warehouseID},{"$push" : {"stock" :{"quantity": itemQuantity,"product_id" : itemID,"location" : locationID}}})
+        req.app.database["entry"].insert_one(jsonDict)
+        raise HTTPException(status_code=status.HTTP_200_OK)
+    if len(test3)!=0:
+        req.app.database["storage"].update_one({"_id":warehouseID,"stock.location" : locationID},{"$set" : {"stock.$.quantity" : itemQuantity}})
 
-    if test3[0] is not None:
-        await req.app.database["storage"].update({"_id":warehouseID,"stock.location" : locationID},{"$set" : {"stock.$.quantity" : itemQuantity}})
     else:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Another product existing at this location")
 
     req.app.database["entry"].insert_one(jsonDict)
-
     raise HTTPException(status_code=status.HTTP_200_OK)
 
 
