@@ -81,6 +81,7 @@ class Entry(BaseModel):
     movement_type: str = Field(None, alias="movement_type")
     quantity: int = Field(None, alias="quantity")
     location: str = Field(None,alias="location")
+    login: str = Field(None,alias="login")
 
     @validator('movement_type')
     def movement_type_must_exists(cls, value):
@@ -89,11 +90,18 @@ class Entry(BaseModel):
             return value
         raise ValueError("movement_type is not of type 'in' or 'out' or 'adjust'")
 
-    @validator('wid')
-    def wid_is_valid(cls, value):
-        if re.match('^MAG[0-9]$', value):
+    # @validator('wid')
+    # def wid_is_valid(cls, value):
+    #     if re.match('^MAG[0-9]$', value):
+    #         return value
+    #     raise ValueError("wid is not in a valid MAG<x> format.")
+
+    @validator('pid')
+    def pid_is_valid(cls, value):
+        if re.match('^[A-Z][0-9]{6}$', value):
             return value
-        raise ValueError("wid is not in a valid MAG<x> format.")
+        raise ValueError("pid is not in a valid MAG<x> format.")
+
 
     class Config():
         json_encoders = { ObjectId: str }
