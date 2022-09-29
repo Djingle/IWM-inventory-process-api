@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from typing import List
 import xmltodict
 from models import *
+import json
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import date
 
@@ -44,19 +45,27 @@ async def root():
 
 
 ######################## Drone requests ########################
+def verify_warehouse(warehouseID:str,  req:Request):
+    return req.app.database["storage"].find_one({"_id": warehouseID})
+
+def verify_product(productID:str,  req:Request):
+    return req.app.database["product"].find_one({"_id": productID})
+
+def verify_location(warehouseID:str,locationID:str,productID:str,req:Request):
+    return req.app.database["storage"].aggregate({"$unwind":"$stock"},{"$match":{"_id":warehouseID}},{"$match":{"$and" :[{"location":locationID},{"$or" :[{"quantity":0},{"product_id":productID}]}]}})
+
+def verify_not_location(warehouseID:str,locationID:str,req:Request):
+    return req.app.database["storage"].aggregate({"$unwind":"$stock"},{"$match":{"_id":warehouseID}},{"$match":{"location":locationID}})
 
 
-
-
-
-
-@IWMI_api.get("/drone-endpoint")
+@IWMI_api.post("/drone-endpoint")
 async def droneEndpoint(req: Request, resp: Response):
     # expect an xml file
     if req.headers['Content-Type'] != 'application/xml':
-        return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unsupported content type (XML only).")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unsupported content type (XML only).")
     
     # retrieve request xml content
+
     xmlStr = await req.body()
     
     try:
@@ -81,17 +90,27 @@ async def droneEndpoint(req: Request, resp: Response):
         }
         
         #test = await verify_warehouse(warehouseID)
-        test = req.app.database["storage"].find_one({"_id": warehouseID})
-        print(test is None)
-        response =HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
+        test =   verify_warehouse(warehouseID,req)
+        test2 =  verify_product(itemID,req)
+        test3 =  verify_location(warehouseID,itemID,locationID,req)
+        test4 =  verify_not_location(warehouseID,locationID,req)
+        print(test)
+        print(test2)
+        print(test3)
+        print(test4)
         if( test is None):
-            response = HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Please input an existing warehouse")
-        else :
-            req.app.database["entry"].insert_one(jsonDict)
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Please input an existing warehouse")
 
-        return response
+        if( test2 is None):
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Please input an existing product")
+
+
+        req.app.database["entry"].insert_one(jsonDict)
+
+        raise HTTPException(status_code=status.HTTP_200_OK)
+
     except:
-        return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Unsupported XML format.")
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Unsupported XML format.")
 
 
 
@@ -102,6 +121,29 @@ async def droneEndpoint(req: Request, resp: Response):
 async def listEntries(request: Request):
     entries = list(request.app.database["entry"].find())
     return entries
+
+######################## General requests ########################
+
+
+@IWMI_api.post("/adjustment")
+async def adjustment(req: Request, resp: Response):
+    dictData = json.load(req)
+    data = dictData["UpdateInventoryRequest"]
+    warehouseID = data["Warehouse"]
+    locationID = data["Location"]
+    itemID = data["Item"]
+    itemQuantity = data["Quantity"]
+    loginCode = data["LoginCode"]
+
+    # Compute quantity adjusted for the entry table
+    oldStock = req.app.database["product"].find({},{"pid":itemID})["quantity"]
+    move_quantity = itemQuantity - oldStock
+
+    # todo : add an entry in entry table
+    
+    req.app.database["product"].update_one()
+
+
 
 @IWMI_api.get("/product/{productID}", response_description="Get a single product by id", response_model=Product)
 async def productsWithID(productID: str, request: Request):
@@ -127,7 +169,7 @@ def list_storages(request: Request):
 async def warehouseStorageWithID(warehouseID: str, request: Request):
     if (storage := request.app.database["storage"].find_one({"_id": warehouseID})) is not None:
         return storage
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Product with ID {warehouseID} not found")
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Warehouse with ID {warehouseID} not found")
 
 
 

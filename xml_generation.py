@@ -64,5 +64,5 @@ for i in range(3):
         "logincode" : logincode()
     }
     d = DataElement(**data)
-    r = requests.get(url, data=d.__str__(), headers=headers)
+    r = requests.post(url, data=d.__str__(), headers=headers)
     #print(d.__str__())
