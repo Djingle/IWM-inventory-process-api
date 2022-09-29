@@ -156,33 +156,35 @@ async def adjustment(req: Request, resp: Response):
     if req.headers['Content-Type'] != 'application/json':
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unsupported content type (json only).")
     reqB = await req.json()
+    print(reqB)
 
     try:
         reqB["date"] = datetime.today()
-
-        test =   await verify_warehouse(reqB["wid"],req)
-        test2 =  await verify_product(reqB["pid"],req)
-        test3 =  await  verify_location(reqB["wid"],reqB["location"],reqB["pid"],req)
-        test4 =  await verify_not_location(reqB["wid"],reqB["location"],req)
-
-
-        if( test is None):
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Please input an existing warehouse")
-
-        if( test2 is None):
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Please input an existing product")
-        if(test4[0] is None):
-            await req.app.database["storage"].update({"_id":reqB["wid"]},{"$addFields" : {"stock.$.quantity" : reqB["quantity"],"stock.$.product_id" : reqB["pid"],"stock.$.location" : reqB["location"]}})
-
-        if( test3[0] is not None):
-            await req.app.database["storage"].update({"_id":reqB["wid"],"stock.location" : reqB["location"]},{"$set" : {"stock.$.quantity" : reqB["quantity"]}})
-        else:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Another product existing at this location")
-
-        req.app.database["entry"].insert_one(reqB)
-
     except:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Unsupported json format.")
+
+    test =   await verify_warehouse(reqB["wid"],req)
+    print(test)
+    test2 =  await verify_product(reqB["pid"],req)
+    print(test2)
+    test3 =  await  verify_location(reqB["wid"],reqB["location"],reqB["pid"],req)
+    test4 =  await verify_not_location(reqB["wid"],reqB["location"],req)
+
+
+    if( test is None):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Please input an existing warehouse")
+
+    if( test2 is None):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Please input an existing product")
+    if len(test4) == 0:
+        req.app.database["storage"].update_one({"_id":reqB["wid"]},{"$push" : {"stock" :{"quantity": reqB["quantity"],"product_id" : reqB["pid"],"location" : reqB["location"]}}})
+        req.app.database["entry"].insert_one(reqB)
+        raise HTTPException(status_code=status.HTTP_200_OK)
+    if len(test3)!=0:
+        req.app.database["storage"].update_one({"_id":reqB["wid"],"stock.location" : reqB["location"]},{"$set" : {"stock.$.quantity" : reqB["quantity"]}})
+
+    req.app.database["entry"].insert_one(reqB)
+
 
     raise HTTPException(status_code=status.HTTP_200_OK)
 
