@@ -65,4 +65,3 @@ for i in range(3):
     }
     d = DataElement(**data)
     r = requests.post(url, data=d.__str__(), headers=headers)
-    #print(d.__str__())
