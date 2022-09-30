@@ -190,8 +190,14 @@ async def adjustment(req: Request, resp: Response):
         req.app.database["entry"].insert_one(reqB)
         raise HTTPException(status_code=status.HTTP_200_OK)
     if len(test3)!=0:
-        req.app.database["storage"].update_one({"_id":wid,"stock.location" : location},{"$set" : {"stock.$.quantity" : quantity}})
-
+        ll = list(req.app.database["storage"].aggregate([{"$unwind":"$stock"},{"$match":{"_id":wid}},{"$match":{"$and" :[{"stock.location":location},{"$or" :[{"stock.quantity":0},{"stock.product_id":pid}]}]}},{"$project":{"quantity":"$stock.quantity"}}]))
+        value = ll[0]["quantity"]
+        print(value)
+        reqB["quantity"] = int(reqB["quantity"]) + value
+        reqB["quantity"] = int(reqB["quantity"])
+        req.app.database["storage"].update_one({"_id":wid,"stock.location" : location},{"$set" : {"stock.$.quantity" : reqB["quantity"]}})
+        print("coucou", reqB)
+        reqB["quantity"] = int(reqB["quantity"]) - value
     req.app.database["entry"].insert_one(reqB)
 
     raise HTTPException(status_code=status.HTTP_200_OK)
