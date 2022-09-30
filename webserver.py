@@ -108,7 +108,7 @@ async def droneEndpoint(req: Request, resp: Response):
         "pid":itemID,
         "wid":warehouseID,
         "date":datetime.today(),
-        "movement_type":"adjust",
+        "movement_type":"inventory",
         "quantity":itemQuantity,
         "location":locationID,
         "login":loginCode
