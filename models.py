@@ -96,11 +96,11 @@ class Entry(BaseModel):
     #         return value
     #     raise ValueError("wid is not in a valid MAG<x> format.")
 
-    @validator('pid')
-    def pid_is_valid(cls, value):
-        if re.match('^[A-Z][0-9]{6}$', value):
-            return value
-        raise ValueError("pid is not in a valid MAG<x> format.")
+    # @validator('pid')
+    # def pid_is_valid(cls, value):
+    #     if re.match('^[A-Z][0-9]{6}$', value):
+    #         return value
+    #     raise ValueError("pid is not in a valid MAG<x> format.")
 
 
     class Config():
