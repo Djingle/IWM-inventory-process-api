@@ -6,9 +6,9 @@ headers = {'Content-Type': 'application/json'}
 
 data = {
     "wid":"MAG1",
-    "location":"K-02-02-03",
+    "location":"K-02-03-01",
     "pid":"E546284",
-    "quantity":"98",
+    "quantity":"375",
     "login":"aia",
 }
 

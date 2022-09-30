@@ -168,6 +168,7 @@ async def adjustment(req: Request, resp: Response):
         pid = reqB["pid"]
         location = reqB["location"]
         quantity = reqB["quantity"]
+        reqB["movement_type"] = "adjust"
         reqB["date"] = datetime.today()
     except:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Unsupported of invalid json format.")
