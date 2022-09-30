@@ -83,12 +83,12 @@ class Entry(BaseModel):
     location: str = Field(None,alias="location")
     login: str = Field(None,alias="login")
 
-    @validator('movement_type')
-    def movement_type_must_exists(cls, value):
-        isValid = value == "in" or value == "out" or value == "adjust"
-        if isValid:
-            return value
-        raise ValueError("movement_type is not of type 'in' or 'out' or 'adjust'")
+    # @validator('movement_type')
+    # def movement_type_must_exists(cls, value):
+    #     isValid = value == "in" or value == "out" or value == "adjust"
+    #     if isValid:
+    #         return value
+    #     raise ValueError("movement_type is not of type 'in' or 'out' or 'adjust'")
 
     # @validator('wid')
     # def wid_is_valid(cls, value):
