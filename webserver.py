@@ -63,15 +63,19 @@ async def root():
 
 
 ######################## Drone requests ########################
+"""Vérifie si warehouseID existe"""
 async def verify_warehouse(warehouseID:str,  req:Request):
     return req.app.database["storage"].find_one({"_id": warehouseID})
 
+""""Vérifie que le productID existe"""
 async def verify_product(productID:str,  req:Request):
     return req.app.database["product"].find_one({"_id": productID})
 
+"""Vérifie : 1-Que le locationID existe dans le warehouseID et que le productID existe à cet endroit; 2 -Que le locationID existe dans le warehouseID et que la quantité est de 0 à cet endroit  """
 async def verify_location(warehouseID:str,locationID:str,productID:str,req:Request):
     return list(req.app.database["storage"].aggregate([{"$unwind":"$stock"},{"$match":{"_id":warehouseID}},{"$match":{"$and" :[{"stock.location":locationID},{"$or" :[{"stock.quantity":0},{"stock.product_id":productID}]}]}}]))
 
+"""Vérifie que le locationID existe dans le warehouse"""
 async def verify_not_location(warehouseID:str,locationID:str,req:Request):
     return list(req.app.database["storage"].aggregate([{"$unwind":"$stock"},{"$match":{"_id":warehouseID}},{"$match":{"stock.location":locationID}}]))
 
